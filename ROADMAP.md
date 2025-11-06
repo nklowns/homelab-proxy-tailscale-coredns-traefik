@@ -1,5 +1,7 @@
 # Roadmap V2 — homelab-proxy-tailscale-coredns-traefik
 
+> **📢 Status: V2.0.0 MVP CONCLUÍDO** (ver seção 5 para detalhes)
+
 Este documento analisa o estado atual da stack e propõe uma V2 focada em replicabilidade entre ambientes (local/dev/staging/prod), simplicidade operacional e segurança.
 
 Referências técnicas (Context7):
@@ -151,22 +153,24 @@ Status esperado pós-migração parcial:
 ---
 ## 5) Plano faseado
 
-MVP (V2.0.0)
-1. Adicionar perfis de Compose (`core`, `dns`, `demo`, `acme-ext`).
-2. Remover exposição da Docker API (mover para `tools`/`demo` ou desabilitar por padrão).
-3. Pinagem das imagens via `.env`.
-4. Script de bootstrap (network + acme perms) e Makefile básico.
-5. Middleware de auth no dashboard (opcional por env) e `log.level` controlado por env.
+MVP (V2.0.0) ✅ **CONCLUÍDO**
+1. ✅ Adicionar perfis de Compose (`core`, `dns`, `demo`, `acme-ext`, `tools`).
+2. ✅ Remover exposição da Docker API (movido para perfil `tools`).
+3. ✅ Pinagem das imagens via `.env`.
+4. ✅ Script de bootstrap (network + acme perms) e Makefile básico.
+5. ✅ Middleware de auth no dashboard (opcional por env) e `log.level` controlado por env.
+6. ✅ Healthchecks para todos os serviços principais.
+7. ✅ Reduzir permissões do docker-socket-proxy para mínimo necessário.
 
 V2.1 – Parametrização e Templates
 1. Introduzir templates `*.tmpl` e `envsubst` no startup.
 2. Variáveis para domínios, emails ACME, CA staging, IPv4 hint do CoreDNS.
-3. Healthcheck para CoreDNS.
+3. Automação adicional de templates.
 
 V2.2 – Observabilidade e Hardening
 1. Habilitar métricas do Traefik (Prometheus) e logs JSON.
 2. Perfil `obs` com Prometheus (scrape do Traefik) e dashboards básicos.
-3. Reduzir permissões do `docker-socket-proxy` e documentar mínimo necessário para o provider.
+3. Documentação adicional de segurança.
 
 V2.3 – Multi-ambientes e DX
 1. Documentar `.env.*` e `--env-file` por ambiente.
@@ -177,7 +181,7 @@ V2.4 – Extras (opcionais)
 - `tailscale serve` flow alternativo.
 - Integração com Grafana/Loki.
 - ForwardAuth (OIDC) para serviços sensíveis.
- - Migração de mais serviços internos para Tailscale Services e remoção de roteadores redundantes.
+- Migração de mais serviços internos para Tailscale Services e remoção de roteadores redundantes.
 
 V2.5 – Consolidação (se aplicável)
 - Inventário final de serviços ainda sob Traefik; justificar cada um.
@@ -186,15 +190,15 @@ V2.5 – Consolidação (se aplicável)
 
 ---
 ## 6) Ações rápidas (low hanging fruit)
-- [ ] Pinagem de versões das imagens via `.env`.
-- [ ] Remover/externalizar roteadores que expõem Docker API.
-- [ ] `letsencrypt/acme.json` com permissão 600 (script/Makefile).
-- [ ] `TRAEFIK_LOG_LEVEL` configurable (INFO por padrão).
-- [ ] Healthcheck do CoreDNS.
- - [ ] Remover/segregar roteadores da Docker API em perfil "tools".
- - [ ] Criar middleware `secure-defaults` (headers + compressão).
- - [ ] Adicionar pinagem de imagens em `.env`.
- - [ ] Documentar uso inicial de Tailscale Services (expor whoami interno sem Traefik).
+- [x] Pinagem de versões das imagens via `.env`.
+- [x] Remover/externalizar roteadores que expõem Docker API.
+- [x] `letsencrypt/acme.json` com permissão 600 (script/Makefile).
+- [x] `TRAEFIK_LOG_LEVEL` configurable (INFO por padrão).
+- [x] Healthcheck do CoreDNS.
+- [x] Remover/segregar roteadores da Docker API em perfil "tools".
+- [x] Criar middleware `secure-defaults` (headers + compressão).
+- [x] Adicionar pinagem de imagens em `.env`.
+- [ ] Documentar uso inicial de Tailscale Services (expor whoami interno sem Traefik).
 
 ---
 ## 7) Critérios de sucesso

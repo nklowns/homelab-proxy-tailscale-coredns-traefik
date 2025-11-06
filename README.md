@@ -8,6 +8,15 @@ Stack de proxy reverso para homelab usando Traefik + Tailscale + CoreDNS + Docke
 - Configuração dinâmica com descoberta de containers via Docker API protegida
 - Observabilidade (dashboard, access log) e modularidade
 
+## 🆕 V2 Features
+
+- **Profiles**: Use Docker Compose profiles para controlar quais serviços iniciar (`core`, `dns`, `demo`, `tools`, `acme-ext`)
+- **Image Pinning**: Versões de imagens fixadas em `.env` para reprodutibilidade
+- **Security by Default**: Docker API não exposta por padrão; permissões mínimas no socket proxy
+- **Automation**: Makefile e scripts para bootstrap, validação e operações comuns
+- **Healthchecks**: Todos os serviços principais têm healthchecks configurados
+- **Better Defaults**: Log level configurável, métricas opcionais, configuração parametrizada
+
 ---
 ## 🧱 Arquitetura
 
@@ -61,57 +70,105 @@ Stack de proxy reverso para homelab usando Traefik + Tailscale + CoreDNS + Docke
 ## ✅ Requisitos
 
 - Docker + Docker Compose
-- Rede Docker externa pré-criada: `proxy_net`
-  Criar se não existir:
-  ```bash
-  docker network create proxy_net
-  ```
 - Conta DuckDNS (token)
 - Conta Tailscale (auth key se usar key-based auth)
 
 ---
-## 🔐 Variáveis de Ambiente (`.env`)
-Baseado em `.env.example`:
+## 🚀 Uso Rápido (V2)
 
-| Variável | Função |
-|----------|--------|
-| `TZ`                 | Timezone para containers. |
-| `DUCKDNS_TOKEN`      | Token para validação DNS-01 (ACME DuckDNS). |
-| `EMAIL`              | Email para registro ACME. |
-| `MY_DOMAIN_DUCKDNS`  | Domínio base DuckDNS (`drake-ayu.duckdns.org`). |
-| `MY_DOMAIN_LOCAL`    | Domínio local interno (`drake-ayu.local`). |
-| `TS_AUTHKEY`         | Chave de autenticação Tailscale (opcional se login manual). |
-| `REMOTE_DOCKER_HOST` | Usado internamente pelo Traefik (socket proxy). |
-| `BASIC_AUTH`         | (Reservado) Para proteger serviços com Auth básica. |
+### Primeira vez (Bootstrap)
 
-Coloque um `.env` (não versionado) ao lado do compose.
+1. Clone o repositório:
+   ```bash
+   git clone <repo-url>
+   cd homelab-proxy-tailscale-coredns-traefik
+   ```
+
+2. Execute o bootstrap:
+   ```bash
+   make bootstrap
+   # ou manualmente:
+   ./scripts/bootstrap.sh
+   ```
+
+3. Edite o `.env` com suas credenciais:
+   ```bash
+   nano .env
+   # Configure: DUCKDNS_TOKEN, TS_AUTHKEY, MY_DOMAIN_DUCKDNS, etc.
+   ```
+
+4. Inicie os serviços:
+   ```bash
+   # Minimal (core services only)
+   make up-core
+   
+   # With DNS
+   make up PROFILES="core dns"
+   
+   # Full stack (core + dns + demo)
+   make up-full
+   ```
+
+### Uso diário
+
+```bash
+# Ver ajuda
+make help
+
+# Iniciar serviços
+make up
+
+# Parar serviços
+make down
+
+# Ver logs
+make logs
+
+# Verificar saúde
+make health
+
+# Validar configuração
+./scripts/checks.sh
+```
+
+### Profiles disponíveis
+
+- `core`: Tailscale + Traefik + Docker Socket Proxy (minimal)
+- `dns`: Adiciona CoreDNS para resolução DNS local
+- `demo`: Adiciona serviço de exemplo (whoami)
+- `tools`: Habilita exposição da Docker API (⚠️ usar com cuidado!)
+- `acme-ext`: Container ACME externo para emissão manual de certificados
+
+Exemplo:
+```bash
+# Apenas core
+make up PROFILES="core"
+
+# Core + DNS + Demo
+make up PROFILES="core dns demo"
+```
 
 ---
-## 🚀 Uso Rápido
+## 🔐 Variáveis de Ambiente (`.env`)
 
-1. Copie o modelo:
-   ```bash
-   cp .env.example .env
-   # Edite DUCKDNS_TOKEN, TS_AUTHKEY etc.
-   ```
-2. (Opcional) Adapte domínios em `traefik.yml`, `traefik-dynamic.yml` e `Corefile`.
-3. Garanta que a rede exista:
-   ```bash
-   docker network create proxy_net || true
-   ```
-4. Suba a stack:
-   ```bash
-   docker compose up -d
-   ```
-5. Verifique saúde:
-   ```bash
-   docker compose ps
-   docker logs proxy-traefik --tail=50
-   docker logs proxy-tailscale --tail=50
-   ```
-6. Teste o serviço exemplo:
-   - `https://whoami.<MY_DOMAIN_DUCKDNS>`
-   - `https://whoami.<MY_DOMAIN_LOCAL>` (se DNS local resolver)
+O arquivo `.env.example` contém todas as variáveis configuráveis:
+
+| Categoria | Variável | Descrição |
+|-----------|----------|-----------|
+| **Geral** | `TZ` | Timezone para containers |
+| **Imagens** | `TRAEFIK_IMAGE` | Versão do Traefik (default: v3.1) |
+| | `COREDNS_IMAGE` | Versão do CoreDNS (default: 1.11.1) |
+| | `TAILSCALE_IMAGE` | Versão do Tailscale (default: v1.74.0) |
+| **Traefik** | `TRAEFIK_LOG_LEVEL` | Nível de log (INFO, DEBUG, etc.) |
+| | `TRAEFIK_METRICS_ENABLED` | Habilitar métricas Prometheus |
+| **DNS/ACME** | `DUCKDNS_TOKEN` | Token DuckDNS para DNS-01 challenge |
+| | `EMAIL` / `ACME_EMAIL` | Email para registro ACME |
+| | `MY_DOMAIN_DUCKDNS` | Domínio DuckDNS base |
+| | `MY_DOMAIN_LOCAL` | Domínio local (.local) |
+| | `TAILNET_HOSTNAME` | Nome do host na tailnet |
+| | `TAILNET_IPV4_HINT` | IP IPv4 da tailnet (para CoreDNS) |
+| | `ACME_CA_SERVER` | Use 'staging' ou 'production' |
+| **Tailscale** | `TS_AUTHKEY` | Chave de autenticação Tailscale |
 
 ---
 ## 🌐 Traefik
@@ -186,22 +243,70 @@ Se precisar de middleware (auth básica, headers, rate limit), adicione em `trae
 
 ---
 ## 🛠 Troubleshooting
+
 | Sintoma | Ação |
 |---------|------|
-| Cert não emite (ACME) | Verificar `DUCKDNS_TOKEN`; conferir logs Traefik (`level: DEBUG`). |
-| whoami não resolve | Testar DNS local; verificar CoreDNS logs. |
-| Tailscale unhealthy | `docker logs proxy-tailscale`; checar chave / políticas ACL. |
-| Dashboard sem acesso | Confirmar domínio em `traefik-dynamic.yml` e DNS apontando. |
-| Docker API exposta | Certifique-se que acesso só via tailnet; não exponha porta 2375 externamente. |
+| Cert não emite (ACME) | Verificar `DUCKDNS_TOKEN`; usar `ACME_CA_SERVER=staging` para testes; conferir logs Traefik |
+| whoami não resolve | Testar DNS local; verificar CoreDNS logs; validar se serviço está no profile correto |
+| Tailscale unhealthy | `docker logs proxy-tailscale`; checar chave / políticas ACL |
+| Dashboard sem acesso | Confirmar domínio em `traefik-dynamic.yml` e DNS apontando; verificar se Traefik está rodando |
+| Docker API exposta | Verificar se profile `tools` está ativo; remover profile e reiniciar |
+| Permissões em acme.json | Executar `make acme-perms` ou `chmod 600 letsencrypt/acme.json` |
+| Serviço não inicia | Verificar profiles: `make ps`; confirmar que profile correto está ativo |
+
+### Comandos úteis
+
+```bash
+# Validar configuração
+./scripts/checks.sh
+
+# Ver status detalhado
+make health
+
+# Logs em tempo real
+make dev-logs
+
+# Acessar shell nos containers
+make shell-traefik
+make shell-tailscale
+make shell-coredns
+
+# Testar DNS
+make test-dns
+```
 
 ---
-## 🔐 Segurança (Checklist)
-- [ ] Rotacione `DUCKDNS_TOKEN` periodicamente.
-- [ ] Use ACLs no painel Tailscale para limitar acesso.
-- [ ] Considere remover permissões desnecessárias no `docker-socket-proxy` (variáveis que não usa).
-- [ ] Não exponha portas host (usa tailnet + network_mode compartilhado).
-- [ ] Proteja o dashboard Traefik com auth/middlewares se exposto além da tailnet.
-- [ ] Revise `acme.json` permissões (`600` ideal) se for lidar manualmente.
+## 🔐 Segurança (V2 Improvements)
+
+### Implementadas por padrão
+- ✅ Docker Socket Proxy com permissões mínimas (apenas CONTAINERS, NETWORKS, SERVICES, TASKS)
+- ✅ Docker API **não exposta** por padrão (movida para profile `tools`)
+- ✅ `acme.json` com permissões 600 (configurado pelo bootstrap)
+- ✅ Versões de imagens fixadas (não usa `:latest` em produção)
+- ✅ Healthchecks em todos os serviços principais
+
+### Checklist de Segurança
+- [ ] Rotacione `DUCKDNS_TOKEN` periodicamente
+- [ ] Use ACLs no painel Tailscale para limitar acesso
+- [ ] Revise permissões do `docker-socket-proxy` periodicamente
+- [ ] Não exponha portas host (usa tailnet + network_mode compartilhado)
+- [ ] Proteja o dashboard Traefik com auth/middlewares se necessário
+- [ ] Use `ACME_CA_SERVER=staging` durante testes para evitar rate limits
+- [ ] Ative o profile `tools` **apenas quando necessário** para debugging
+
+### Expondo Docker API (CUIDADO!)
+
+Por padrão, a Docker API **não está acessível via HTTP/TCP**. Se você precisa expor para debugging:
+
+```bash
+# Iniciar com profile tools (inclui exposição da API)
+make up PROFILES="core tools"
+
+# IMPORTANTE: Use apenas em ambientes seguros e isolados!
+# Reverta após debugging:
+make down
+make up PROFILES="core dns"
+```
 
 ---
 ## 🧪 Testes Rápidos
@@ -215,11 +320,24 @@ docker exec -it proxy-traefik ls -l /letsencrypt
 
 ---
 ## 🗺 Roadmap / Ideias Futuras
-- Middleware de autenticação central (Basic / ForwardAuth)
-- Integração com Grafana / Loki para observabilidade
-- Adicionar Healthcheck ao CoreDNS
-- Templates para serviços TCP (ex.: MongoDB via SNI)
-- Script de bootstrap para validação de dependências
+
+Ver [ROADMAP.md](ROADMAP.md) para plano detalhado da V2.
+
+**V2.0.0 (Implementado):**
+- ✅ Profiles de Compose (core, dns, demo, tools, acme-ext)
+- ✅ Pinagem de versões de imagens
+- ✅ Segurança: Docker API não exposta por padrão
+- ✅ Healthchecks em todos os serviços
+- ✅ Makefile para automação
+- ✅ Scripts de bootstrap e validação
+- ✅ Log level configurável
+
+**Próximos passos (V2.1+):**
+- Templates de configuração com envsubst
+- Middleware de autenticação central
+- Integração com Grafana/Loki
+- Suporte a Tailscale Services
+- Multi-ambiente (.env.dev, .env.prod)
 
 ---
 ## ⚖️ Licença

@@ -2,6 +2,9 @@ api:
   dashboard: true
   disableDashboardAd: true
 
+ping:
+  entryPoint: "websecure"
+
 
 entryPoints:
   web:

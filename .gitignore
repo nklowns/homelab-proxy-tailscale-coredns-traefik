@@ -1,6 +1,30 @@
+# Environment files
 .env
-logs/access.log
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Certificates and sensitive data
 certs/
 tailscale/
 letsencrypt/acme.json
+letsencrypt/*.json
+
+# HAProxy state
 haproxy/server-state
+haproxy/
+
+# Backups
+backups/
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

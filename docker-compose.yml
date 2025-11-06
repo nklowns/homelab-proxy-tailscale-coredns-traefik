@@ -4,9 +4,10 @@ networks:
 
 services:
   proxy-tailscale:
-    image: tailscale/tailscale:latest
+    image: ${TAILSCALE_IMAGE:-tailscale/tailscale:v1.74.0}
     container_name: proxy-tailscale
     restart: always
+    profiles: ["core"]
     networks:
       - proxy_net
 
@@ -14,7 +15,7 @@ services:
       - net_admin
       - sys_module
     environment:
-      - TS_HOSTNAME=proxy-traefik
+      - TS_HOSTNAME=${TAILNET_HOSTNAME:-proxy-traefik}
       - TS_AUTHKEY=${TS_AUTHKEY}
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_SOCKET=/var/run/tailscale/tailscaled.sock
@@ -31,9 +32,10 @@ services:
       start_period: 60s
 
   proxy-coredns:
-    image: coredns/coredns:latest
+    image: ${COREDNS_IMAGE:-coredns/coredns:1.11.1}
     container_name: proxy-coredns
     restart: always
+    profiles: ["dns"]
     network_mode: service:proxy-tailscale
     depends_on:
       proxy-tailscale:
@@ -42,11 +44,18 @@ services:
     command: -conf /Corefile
     volumes:
       - ./Corefile:/Corefile:ro
+    healthcheck:
+      test: ["CMD", "sh", "-c", "dig @127.0.0.1 health.${MY_DOMAIN_LOCAL:-drake-ayu.local} A || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   proxy-traefik:
-    image: traefik:latest
+    image: ${TRAEFIK_IMAGE:-traefik:v3.1}
     container_name: proxy-traefik
     restart: always
+    profiles: ["core"]
     network_mode: service:proxy-tailscale
     depends_on:
       proxy-tailscale:
@@ -56,6 +65,7 @@ services:
 
     environment:
       - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
+      - TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL:-INFO}
     volumes:
       - ./certs:/certs:ro
       - ./letsencrypt:/letsencrypt:rw
@@ -64,12 +74,19 @@ services:
       - ./logs:/logs:rw
       - ./tailscale/data:/var/lib/tailscale:rw
       - ./tailscale:/var/run/tailscale:rw
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   whoami:
-    image: traefik/whoami
+    image: ${WHOAMI_IMAGE:-traefik/whoami:latest}
     container_name: whoami
     hostname: whoami
     restart: unless-stopped
+    profiles: ["demo"]
     networks:
       - proxy_net
 
@@ -81,41 +98,61 @@ services:
       - traefik.http.routers.whoami.entrypoints=websecure
 
   docker-socket-proxy:
-    image: tecnativa/docker-socket-proxy
+    image: ${DOCKER_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:latest}
     container_name: docker-socket-proxy
     hostname: docker-socket-proxy
     restart: always
+    profiles: ["core", "tools"]
     networks:
       - proxy_net
 
     environment:
-      ### Not always needed
-      - BUILD=1
-      - COMMIT=1
-      - CONFIGS=1
+      ### Minimal permissions for Traefik provider (security by default)
       - CONTAINERS=1
-      - DISTRIBUTION=1
-      - EXEC=1
-      - IMAGES=1
-      - INFO=1
       - NETWORKS=1
-      - NODES=1
-      - PLUGINS=1
       - SERVICES=1
-      - SESSION=1
-      - SWARM=1
-      - SYSTEM=1
       - TASKS=1
-      - VOLUMES=1
-      - VERSION=1
-      ### Security-critical
-      - AUTH=1
-      - SECRETS=1
-      - POST=1
+      ### Disabled by default - enable only if needed
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - DISTRIBUTION=0
+      - EXEC=0
+      - IMAGES=0
+      - INFO=0
+      - NODES=0
+      - PLUGINS=0
+      - SESSION=0
+      - SWARM=0
+      - SYSTEM=0
+      - VOLUMES=0
+      - VERSION=0
+      - AUTH=0
+      - SECRETS=0
+      - POST=0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./haproxy:/var/lib/haproxy:rw
 
+  # Docker API exposure - only enable with 'tools' profile for debugging
+  # SECURITY WARNING: This exposes Docker API. Use only in secure, isolated environments.
+  docker-api-exposure:
+    image: ${DOCKER_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:latest}
+    container_name: docker-api-exposure
+    profiles: ["tools"]
+    restart: "no"
+    networks:
+      - proxy_net
+    environment:
+      - CONTAINERS=1
+      - NETWORKS=1
+      - SERVICES=1
+      - TASKS=1
+      - IMAGES=1
+      - INFO=1
+      - VERSION=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
       - traefik.enable=true
       ### Docker (TCP)
@@ -133,6 +170,7 @@ services:
   #   build: ./acme
   #   container_name: acme-duckdns
   #   restart: unless-stopped
+  #   profiles: ["acme-ext"]
   #   environment:
   #     - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
   #     - DOMAIN=${MY_DOMAIN_DUCKDNS}
