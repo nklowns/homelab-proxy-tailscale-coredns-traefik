@@ -1,0 +1,74 @@
+api:
+  dashboard: true
+  disableDashboardAd: true
+
+
+entryPoints:
+  web:
+    address: ':80'
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: ':443'
+    http:
+      tls:
+        certResolver: leresolver
+        domains:
+          - main: '*.drake-ayu.duckdns.org'
+          - main: 'drake-ayu.duckdns.org'
+          # - main: '*.drake-ayu.local'
+    allowACMEByPass: true
+    asDefault: true
+
+  docker-tcp:
+    address: ':2375/tcp'
+
+  mongodb-tcp:
+    address: ':27017/tcp'
+
+
+providers:
+  docker:
+    endpoint: 'tcp://docker-socket-proxy:2375'
+    exposedByDefault: false
+    watch: true
+
+  file:
+    filename: '/traefik-dynamic.yml'
+    watch: true
+
+
+certificatesResolvers:
+  leresolver:
+    acme:
+      email: nklowns@gmail.com
+      storage: /letsencrypt/acme.json
+      # caServer: 'https://acme-staging-v02.api.letsencrypt.org/directory'
+      # tlsChallenge: {}
+      dnsChallenge:
+        provider: duckdns
+        disablePropagationCheck: true
+        resolvers:
+          - '1.1.1.1:53'
+          - '8.8.8.8:53'
+          # - '100.124.118.27:53'
+
+  tailsolver:
+    tailscale: {}
+
+
+accessLog:
+  filePath: '/logs/access.log'
+  fields:
+    headers:
+      names:
+        User-Agent: keep
+
+
+log:
+  # filePath: '/logs/traefik.log'
+  level: 'DEBUG'

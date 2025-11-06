@@ -1,0 +1,6 @@
+.env
+logs/access.log
+certs/
+tailscale/
+letsencrypt/acme.json
+haproxy/server-state

@@ -1,0 +1,74 @@
+# CoreDNS Corefile
+
+proxy-traefik.drake-ayu.ts.net:53 {
+    log
+    errors
+    reload
+
+    template IN A {
+        match ".*"
+        answer "{{ .Name }} 60 IN A 100.124.118.27"
+    }
+    template IN AAAA {
+        match ".*"
+        answer "{{ .Name }} 60 IN AAAA ::1"
+    }
+
+    template IN HTTPS {
+        match ".*"
+        answer "{{ .Name }} 60 IN HTTPS 1 . alpn=h2,h3 port=443 ipv4hint=100.124.118.27"
+    }
+    template IN SVCB {
+        match ".*"
+        answer "{{ .Name }} 60 IN SVCB 1 . alpn=h2,h3 port=443 ipv4hint=100.124.118.27"
+    }
+
+}
+
+drake-ayu.duckdns.org:53 {
+    log
+    errors
+    reload
+
+    template IN A {
+        match ".*"
+        answer "{{ .Name }} 60 IN A 100.124.118.27"
+    }
+    template IN AAAA {
+        match ".*"
+        answer "{{ .Name }} 60 IN AAAA ::1"
+    }
+
+    template IN HTTPS {
+        match ".*"
+        answer "{{ .Name }} 60 IN HTTPS 1 . alpn=h2,h3 port=443 ipv4hint=100.124.118.27"
+    }
+    template IN SVCB {
+        match ".*"
+        answer "{{ .Name }} 60 IN SVCB 1 . alpn=h2,h3 port=443 ipv4hint=100.124.118.27"
+    }
+}
+
+drake-ayu.local:53 {
+    log
+    errors
+    reload
+
+    template IN A {
+        match ".*"
+        answer "{{ .Name }} 60 IN A 100.124.118.27"
+    }
+    template IN AAAA {
+        match ".*"
+        answer "{{ .Name }} 60 IN AAAA ::1"
+    }
+
+    template IN HTTPS {
+        match ".*"
+        answer "{{ .Name }} 60 IN HTTPS 1 . alpn=h2,h3 port=443 ipv4hint=100.124.118.27"
+    }
+    template IN SVCB {
+        match ".*"
+        answer "{{ .Name }} 60 IN SVCB 1 . alpn=h2,h3 port=443 ipv4hint=100.124.118.27"
+    }
+}

@@ -1,0 +1,31 @@
+# Dynamic configuration
+
+http:
+  routers:
+    traefik:
+      entryPoints:
+        - websecure
+      rule: 'Host(`traefik.drake-ayu.duckdns.org`) || Host(`traefik.drake-ayu.local`)'
+      service: 'api@internal'
+
+    # traefik-local:
+    #   entryPoints:
+    #     - websecure
+    #   rule: 'Host(`traefik.drake-ayu.local`)'
+    #   service: 'api@internal'
+    #   tls: {}
+
+    traefik-tsnet:
+      entryPoints:
+        - websecure
+      rule: 'Host(`proxy-traefik.drake-ayu.ts.net`) || Host(`100.124.118.27`)'
+      service: 'api@internal'
+      tls:
+        certResolver: tailsolver
+
+tls:
+  certificates:
+    - certFile: /certs/drake-ayu.local.crt
+      keyFile: /certs/drake-ayu.local.key
+      stores:
+        - default

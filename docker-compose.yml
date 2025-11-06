@@ -1,0 +1,141 @@
+networks:
+  proxy_net:
+    external: true
+
+services:
+  proxy-tailscale:
+    image: tailscale/tailscale:latest
+    container_name: proxy-tailscale
+    restart: always
+    networks:
+      - proxy_net
+
+    cap_add:
+      - net_admin
+      - sys_module
+    environment:
+      - TS_HOSTNAME=proxy-traefik
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_SOCKET=/var/run/tailscale/tailscaled.sock
+      - TS_EXTRA_ARGS=
+    volumes:
+      - ./tailscale/data:/var/lib/tailscale:rw
+      - ./tailscale:/var/run/tailscale
+      - /dev/net/tun:/dev/net/tun
+    healthcheck:
+      test: ["CMD", "tailscale", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  proxy-coredns:
+    image: coredns/coredns:latest
+    container_name: proxy-coredns
+    restart: always
+    network_mode: service:proxy-tailscale
+    depends_on:
+      proxy-tailscale:
+        condition: service_healthy
+
+    command: -conf /Corefile
+    volumes:
+      - ./Corefile:/Corefile:ro
+
+  proxy-traefik:
+    image: traefik:latest
+    container_name: proxy-traefik
+    restart: always
+    network_mode: service:proxy-tailscale
+    depends_on:
+      proxy-tailscale:
+        condition: service_healthy
+      docker-socket-proxy:
+        condition: service_started
+
+    environment:
+      - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
+    volumes:
+      - ./certs:/certs:ro
+      - ./letsencrypt:/letsencrypt:rw
+      - ./traefik.yml:/traefik.yml:ro
+      - ./traefik-dynamic.yml:/traefik-dynamic.yml:ro
+      - ./logs:/logs:rw
+      - ./tailscale/data:/var/lib/tailscale:rw
+      - ./tailscale:/var/run/tailscale:rw
+
+  whoami:
+    image: traefik/whoami
+    container_name: whoami
+    hostname: whoami
+    restart: unless-stopped
+    networks:
+      - proxy_net
+
+    labels:
+      - traefik.enable=true
+      ### whoami
+      - traefik.http.services.whoami.loadbalancer.server.port=80
+      - traefik.http.routers.whoami.rule=Host(`whoami.${MY_DOMAIN_DUCKDNS}`) || Host(`whoami.${MY_DOMAIN_LOCAL}`)
+      - traefik.http.routers.whoami.entrypoints=websecure
+
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy
+    container_name: docker-socket-proxy
+    hostname: docker-socket-proxy
+    restart: always
+    networks:
+      - proxy_net
+
+    environment:
+      ### Not always needed
+      - BUILD=1
+      - COMMIT=1
+      - CONFIGS=1
+      - CONTAINERS=1
+      - DISTRIBUTION=1
+      - EXEC=1
+      - IMAGES=1
+      - INFO=1
+      - NETWORKS=1
+      - NODES=1
+      - PLUGINS=1
+      - SERVICES=1
+      - SESSION=1
+      - SWARM=1
+      - SYSTEM=1
+      - TASKS=1
+      - VOLUMES=1
+      - VERSION=1
+      ### Security-critical
+      - AUTH=1
+      - SECRETS=1
+      - POST=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./haproxy:/var/lib/haproxy:rw
+
+    labels:
+      - traefik.enable=true
+      ### Docker (TCP)
+      - traefik.tcp.services.dockerapi.loadbalancer.server.port=2375
+      - traefik.tcp.routers.dockerapi.entrypoints=docker-tcp
+      - traefik.tcp.routers.dockerapi.rule=HostSNI(`*`)
+      ### TLS (tcp)
+      - traefik.tcp.routers.dockerapi.tls=false
+      ### Docker (HTTP)
+      - traefik.http.services.dockerapi.loadbalancer.server.port=2375
+      - traefik.http.routers.dockerapi.entrypoints=websecure
+      - traefik.http.routers.dockerapi.rule=Host(`docker.${MY_DOMAIN_DUCKDNS}`) || Host(`docker.${MY_DOMAIN_LOCAL}`)
+
+  # acme-duckdns:
+  #   build: ./acme
+  #   container_name: acme-duckdns
+  #   restart: unless-stopped
+  #   environment:
+  #     - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
+  #     - DOMAIN=${MY_DOMAIN_DUCKDNS}
+  #     - EMAIL=${EMAIL}
+  #   volumes:
+  #     - ./certs:/certs
