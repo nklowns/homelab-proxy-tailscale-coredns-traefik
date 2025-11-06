@@ -86,7 +86,7 @@ REQUIRED_VARS=("DUCKDNS_TOKEN" "EMAIL" "MY_DOMAIN_DUCKDNS")
 MISSING_VARS=()
 
 for VAR in "${REQUIRED_VARS[@]}"; do
-    if ! grep -q "^${VAR}=.\+" .env 2>/dev/null; then
+    if ! grep -qE "^${VAR}=.+" .env 2>/dev/null; then
         MISSING_VARS+=("$VAR")
     fi
 done

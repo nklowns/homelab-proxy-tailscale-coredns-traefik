@@ -87,7 +87,14 @@ fi
 
 echo -n "Checking acme.json permissions... "
 if [ -f letsencrypt/acme.json ]; then
-    PERMS=$(stat -c '%a' letsencrypt/acme.json)
+    # Cross-platform stat command
+    if stat --version 2>/dev/null | grep -q 'GNU'; then
+        # Linux (GNU stat)
+        PERMS=$(stat -c '%a' letsencrypt/acme.json)
+    else
+        # macOS/BSD (BSD stat)
+        PERMS=$(stat -f '%A' letsencrypt/acme.json)
+    fi
     if [ "$PERMS" = "600" ]; then
         echo -e "${GREEN}✓${NC} (600)"
     else

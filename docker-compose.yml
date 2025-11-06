@@ -45,7 +45,7 @@ services:
     volumes:
       - ./Corefile:/Corefile:ro
     healthcheck:
-      test: ["CMD", "sh", "-c", "dig @127.0.0.1 health.${MY_DOMAIN_LOCAL:-drake-ayu.local} A || exit 0"]
+      test: ["CMD", "sh", "-c", "dig @127.0.0.1 health.${MY_DOMAIN_LOCAL:-drake-ayu.local} A +short | grep -q '.'"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -102,7 +102,7 @@ services:
     container_name: docker-socket-proxy
     hostname: docker-socket-proxy
     restart: always
-    profiles: ["core", "tools"]
+    profiles: ["core"]
     networks:
       - proxy_net
 

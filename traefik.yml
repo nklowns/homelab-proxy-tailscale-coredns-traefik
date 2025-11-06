@@ -3,7 +3,7 @@ api:
   disableDashboardAd: true
 
 ping:
-  entryPoint: "websecure"
+  entryPoint: "web"
 
 
 entryPoints:

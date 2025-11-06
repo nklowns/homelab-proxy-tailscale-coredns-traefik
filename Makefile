@@ -115,4 +115,8 @@ backup-certs: ## Backup certificates and Tailscale state
 # Testing
 test-dns: ## Test CoreDNS resolution
 	@echo "Testing DNS resolution..."
-	@docker exec -it proxy-coredns dig @127.0.0.1 whoami.$${MY_DOMAIN_DUCKDNS:-drake-ayu.duckdns.org} A
+	@if [ -f .env ]; then \
+		. ./.env && docker exec proxy-coredns dig @127.0.0.1 whoami.$$MY_DOMAIN_DUCKDNS A; \
+	else \
+		docker exec proxy-coredns dig @127.0.0.1 whoami.drake-ayu.duckdns.org A; \
+	fi
