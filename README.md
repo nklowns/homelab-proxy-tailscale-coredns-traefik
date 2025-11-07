@@ -46,112 +46,125 @@ Stack de proxy reverso para homelab usando Traefik + Tailscale + CoreDNS + Docke
 
 | Caminho | Descrição |
 |---------|-----------|
-| `docker-compose.yml`  | Orquestra todos os serviços. |
-| `traefik.yml`         | Configuração estática (entryPoints, providers, ACME). |
-| `traefik-dynamic.yml` | Configuração dinâmica (routers extras, TLS local). |
-| `Corefile`            | Regras do CoreDNS para domínios DuckDNS, Tailscale e `.local`. |
-| `certs/`              | Certificados locais (ex.: `drake-ayu.local.*`). |
-| `letsencrypt/`        | Armazena `acme.json` (persistência ACME). |
-| `logs/`               | Logs de acesso (`access.log`). |
-| `acme/`               | Dockerfile + script para emissão manual/externa (opcional). |
-| `tailscale/`          | Estado e socket do Tailscale (`data/`, `tailscaled.sock`). |
-| `.env.example`        | Variáveis de ambiente modelo. |
+| `Makefile`                        | Ponto de entrada para automação (bootstrap, renderização, start/stop). |
+| `docker-compose.yml`              | Orquestra todos os serviços. |
+| `config/`                         | Contém os templates (`.tmpl`) para `gomplate`. |
+| `config/traefik.yml.tmpl`         | Template para a configuração estática do Traefik. |
+| `config/traefik-dynamic.yml.tmpl` | Template para a configuração dinâmica (routers, middlewares). |
+| `config/Corefile.tmpl`            | Template para as regras do CoreDNS. |
+| `traefik.yml`                     | **Gerado** pelo `make`. Configuração estática do Traefik. |
+| `traefik-dynamic.yml`             | **Gerado** pelo `make`. Configuração dinâmica. |
+| `Corefile`                        | **Gerado** pelo `make`. Regras do CoreDNS. |
+| `certs/`                          | Certificados locais (ex.: `drake-ayu.local.*`). |
+| `letsencrypt/`                    | Armazena `acme.json` (persistência ACME). |
+| `logs/`                           | Logs de acesso (`access.log`). |
+| `acme/`                           | Dockerfile + script para emissão manual/externa (opcional). |
+| `tailscale/`                      | Estado e socket do Tailscale (`data/`, `tailscaled.sock`). |
+| `.env.example`                    | Variáveis de ambiente modelo. |
+| `.env`                            | **Seu arquivo local** de variáveis (ignorado pelo git). |
 
 ---
 ## ✅ Requisitos
 
 - Docker + Docker Compose
-- Rede Docker externa pré-criada: `proxy_net`
-  Criar se não existir:
-  ```bash
-  docker network create proxy_net
-  ```
+- `make` para executar os comandos de automação.
 - Conta DuckDNS (token)
 - Conta Tailscale (auth key se usar key-based auth)
 
 ---
 ## 🔐 Variáveis de Ambiente (`.env`)
-Baseado em `.env.example`:
+Baseado em `.env.example`. Crie um arquivo `.env` com suas configurações.
 
 | Variável | Função |
 |----------|--------|
-| `TZ`                 | Timezone para containers. |
-| `DUCKDNS_TOKEN`      | Token para validação DNS-01 (ACME DuckDNS). |
-| `ACME_EMAIL`         | Email para registro ACME. |
-| `DOMAIN_DUCKDNS`     | Domínio base DuckDNS (`drake-ayu.duckdns.org`). |
-| `DOMAIN_LOCAL`       | Domínio local interno (`drake-ayu.local`). |
-| `DOMAIN_TSNET`       | Domínio Tailscale MagicDNS (`drake-ayu.ts.net`). |
-| `TS_AUTHKEY`         | Chave de autenticação Tailscale (opcional se login manual). |
-| `REMOTE_DOCKER_HOST` | Usado internamente pelo Traefik (socket proxy). |
-| `BASIC_AUTH`         | (Reservado) Para proteger serviços com Auth básica. |
+| `TZ`                             | Timezone para containers. |
+| `TRAEFIK_IMAGE`...`WHOAMI_IMAGE` | Versões das imagens Docker a serem usadas. |
+| `TRAEFIK_LOG_LEVEL`              | Nível de log do Traefik (e.g., `INFO`, `DEBUG`). |
+| `TRAEFIK_METRICS_ENABLED`        | Ativa ou desativa o endpoint de métricas do Prometheus. |
+| `DUCKDNS_TOKEN`                  | Token para validação DNS-01 (ACME DuckDNS). |
+| `ACME_EMAIL`                     | Email para registro e notificações da ACME (Let's Encrypt/ZeroSSL). |
+| `ACME_CA_SERVER`                 | Servidor ACME a ser usado. Use `staging` para testes e `production` para produção. |
+| `DOMAIN_DUCKDNS`                 | Domínio base DuckDNS (ex: `drake-ayu.duckdns.org`). |
+| `DOMAIN_LOCAL`                   | Domínio local interno (ex: `drake-ayu.local`). |
+| `DOMAIN_TSNET`                   | Domínio Tailscale MagicDNS (ex: `drake-ayu.ts.net`). |
+| `TS_AUTHKEY`                     | Chave de autenticação Tailscale para provisionamento automático. |
+| `TAILNET_HOSTNAME`               | Nome do host que o proxy terá na rede Tailscale. |
+| `TAILNET_IPV4_HINT`              | O IP da sua máquina na rede Tailscale. Usado pelo CoreDNS. |
+| `REMOTE_DOCKER_HOST`             | Usado internamente pelo Traefik (socket proxy). |
 
 Coloque um `.env` (não versionado) ao lado do compose.
 
 ---
 ## 🚀 Uso Rápido
 
-1. Copie o modelo:
-   ```bash
-   cp .env.example .env
-   # Edite DUCKDNS_TOKEN, TS_AUTHKEY etc.
-   ```
-2. (Opcional) Adapte domínios em `traefik.yml`, `traefik-dynamic.yml` e `Corefile`.
-3. Garanta que a rede exista:
-   ```bash
-   docker network create proxy_net || true
-   ```
-4. Suba a stack:
-   ```bash
-   docker compose up -d
-   ```
-5. Verifique saúde:
-   ```bash
-   docker compose ps
-   docker logs proxy-traefik --tail=50
-   docker logs proxy-tailscale --tail=50
-   ```
-6. Teste o serviço exemplo:
-   - `https://whoami.<DOMAIN_DUCKDNS>`
-   - `https://whoami.<DOMAIN_LOCAL>` (se DNS local resolver)
+O `Makefile` automatiza todo o processo de setup e execução.
+
+1.  **Bootstrap (executar apenas uma vez):**
+    Este comando irá criar o arquivo `.env` a partir do exemplo, a rede `proxy_net` e ajustar permissões de arquivos necessários.
+    ```bash
+    make bootstrap
+    ```
+2.  **Edite suas credenciais:**
+    Abra o arquivo `.env` recém-criado e preencha no mínimo `DUCKDNS_TOKEN`, `TS_AUTHKEY`, `ACME_EMAIL` e seus domínios.
+
+3.  **Suba a stack:**
+    Este comando irá validar as variáveis, renderizar os arquivos de configuração a partir dos templates e iniciar todos os serviços.
+    ```bash
+    make up
+    ```
+4.  **Verifique a saúde dos serviços:**
+    Para ver logs de um serviço específico (ex: `proxy-traefik`):
+    ```bash
+    docker compose logs -f proxy-traefik
+    ```
+
+5.  **Teste os serviços de exemplo:**
+    - `https://whoami.your-domain.duckdns.org`
+    - `https://whoami.your-domain.local` (se seu DNS local resolver)
+    - `https://traefik.your-domain.duckdns.org` (para o dashboard do Traefik)
+
+### Comandos úteis do Makefile
+- `make up`: Inicia os containers.
+- `make down`: Para todos os containers.
+- `make restart`: Reinicia a stack.
+- `make render-config`: Força a renderização dos templates de configuração.
+- `make validate-vars`: Checa se as variáveis essenciais estão definidas no `.env`.
 
 ---
 ## 🌐 Traefik
 ### EntryPoints
-- `web` (80) redireciona para `websecure` (HTTPS)
-- `websecure` (443) usa `certResolver=leresolverDuckdns`
+- `web` (80) redireciona para `websecure` (HTTPS).
+- `websecure` (443) ponto de entrada principal para tráfego HTTPS.
 - `docker-tcp` (2375) expõe Docker API via TCP (controlado por labels) — protegido pela tailnet
 - `mongodb-tcp` (27017) placeholder para serviços TCP futuros
 
 ### Providers
-- Docker: via `docker-socket-proxy` (reduz superfície de ataque)
-- File: `traefik-dynamic.yml` para routers extras e certificados locais
+- **Docker**: via `docker-socket-proxy` para descobrir containers na rede `proxy_net` de forma segura.
+- **File**: aponta para `traefik-dynamic.yml` (gerado), que contém routers e middlewares.
 
 ### Certificados
-- `leresolverDuckdns`: ACME DNS-01 DuckDNS (Let's Encrypt / ZeroSSL dependendo do servidor)
-- `tailsolver`: integração Tailscale (certificados emitidos pela API Tailscale)
-- Cert local manual em `tls.certificates` (útil para domínio `.local`)
+- `leresolverDuckdns`: Resolvedor ACME que usa o método DNS-01 com DuckDNS.
+- `tailsolver`: Resolvedor que obtém certificados TLS diretamente da sua tailnet.
+- **Certificados Locais**: Para o `DOMAIN_LOCAL`, certificados são lidos do diretório `/certs`.
 
 ---
 ## 🔒 Tailscale
-- `proxy-tailscale` roda `tailscaled` e compartilha o network namespace com Traefik e CoreDNS (`network_mode: service:proxy-tailscale`).
-- Benefícios: IP tailnet, cert Tailscale (`tailsolver`), ACLs e DNS mágico.
-- Estado persistido em `tailscale/data`.
+- `proxy-tailscale` roda `tailscaled` e compartilha seu namespace de rede com Traefik e CoreDNS (`network_mode: service:proxy-tailscale`). Isso garante que todos usem o mesmo IP da Tailscale.
+- **Benefícios**: IP estável na tailnet, certificados TLS via `tailsolver`, ACLs de segurança e MagicDNS.
+- O estado do Tailscale é persistido no volume `tailscale/data`.
 
-Se não usar `TS_AUTHKEY`, entre no container e faça:
+Se não usar `TS_AUTHKEY`, você precisará autenticar manualmente:
 ```bash
 docker exec -it proxy-tailscale tailscale up
 ```
 
 ---
 ## 🧾 CoreDNS
-`Corefile` responde para:
-- `*.drake-ayu.ts.net`
-- `*.drake-ayu.duckdns.org`
-- `*.drake-ayu.local`
+O `Corefile` (gerado a partir do `config/Corefile.tmpl`) responde para seus domínios (`DOMAIN_DUCKDNS`, `DOMAIN_LOCAL`, `DOMAIN_TSNET`).
 
-Com templates A/AAAA e registros HTTPS/SVCB apontando para o endereço IPv4 tailnet (`100.124.118.27`). Ajuste se o IP mudar.
+Ele usa o plugin `template` para gerar dinamicamente registros A, AAAA, HTTPS e SVCB, apontando para o IP da sua máquina na Tailnet (`TAILNET_IPV4_HINT`).
 
-Para testar:
+Para testar o DNS de dentro da stack:
 ```bash
 docker exec -it proxy-coredns dig @127.0.0.1 whoami.drake-ayu.duckdns.org A
 ```
@@ -159,19 +172,12 @@ docker exec -it proxy-coredns dig @127.0.0.1 whoami.drake-ayu.duckdns.org A
 ---
 ## 🔑 ACME / Certificados
 ### Via Traefik (principal)
-- DNS-01 DuckDNS: requer `DUCKDNS_TOKEN`.
-- Armazenamento em `letsencrypt/acme.json` (permissões preservadas).
-  Se estiver vazio, Traefik cria/atualiza automaticamente.
+- **DNS-01 DuckDNS**: Requer `DUCKDNS_TOKEN` e `ACME_EMAIL` no `.env`.
+- **Armazenamento**: O `acme.json` é criado e gerenciado pelo Traefik no volume `letsencrypt/`. As permissões são ajustadas automaticamente pelo `make bootstrap`.
 
 ### Via Container ACME externo (opcional)
-- Diretório `acme/` contém `Dockerfile` + `entrypoint.sh` usando `acme.sh` e ZeroSSL.
-- Comentado no `docker-compose.yml`. Para ativar:
-  1. Descomente o serviço `acme-duckdns`.
-  2. Ajuste variáveis `DUCKDNS_TOKEN`, `DOMAIN`, `EMAIL`.
-  3. Suba novamente:
-     ```bash
-     docker compose up -d --build acme-duckdns
-     ```
+- O diretório `acme/` contém um `Dockerfile` e `entrypoint.sh` que usam `acme.sh`.
+- Este serviço (`acme-duckdns`) está comentado no `docker-compose.yml` e pode ser usado para debug ou cenários específicos.
 
 ---
 ## ➕ Adicionando um Novo Serviço
@@ -189,42 +195,31 @@ Se precisar de middleware (auth básica, headers, rate limit), adicione em `trae
 ## 🛠 Troubleshooting
 | Sintoma | Ação |
 |---------|------|
-| Cert não emite (ACME) | Verificar `DUCKDNS_TOKEN`; conferir logs Traefik (`level: DEBUG`). |
-| whoami não resolve | Testar DNS local; verificar CoreDNS logs. |
-| Tailscale unhealthy | `docker logs proxy-tailscale`; checar chave / políticas ACL. |
-| Dashboard sem acesso | Confirmar domínio em `traefik-dynamic.yml` e DNS apontando. |
-| Docker API exposta | Certifique-se que acesso só via tailnet; não exponha porta 2375 externamente. |
 
 ---
 ## 🔐 Segurança (Checklist)
-- [ ] Rotacione `DUCKDNS_TOKEN` periodicamente.
-- [ ] Use ACLs no painel Tailscale para limitar acesso.
-- [ ] Considere remover permissões desnecessárias no `docker-socket-proxy` (variáveis que não usa).
-- [ ] Não exponha portas host (usa tailnet + network_mode compartilhado).
-- [ ] Proteja o dashboard Traefik com auth/middlewares se exposto além da tailnet.
-- [ ] Revise `acme.json` permissões (`600` ideal) se for lidar manualmente.
+- [ ] Rotacione `DUCKDNS_TOKEN` e `TS_AUTHKEY` periodicamente.
+- [ ] Use ACLs no painel da Tailscale para restringir o acesso entre máquinas na sua tailnet.
+- [ ] Revise as permissões do `docker-socket-proxy` no `docker-compose.yml` para garantir que apenas o necessário está exposto.
+- [ ] Não exponha portas do host na internet. Deixe que a Tailscale gerencie o acesso.
+- [ ] Proteja o dashboard do Traefik com um middleware de autenticação (ex: `forwardAuth` ou `basicAuth`) se houver chance de exposição.
 
 ---
 ## 🧪 Testes Rápidos
 ```bash
-# Ver routers carregados
+# Ver routers carregados via API do Traefik (requer DNS local ou túnel)
 curl -s --cacert certs/drake-ayu.local.crt https://traefik.drake-ayu.local/api/http/routers | jq 'keys'
 
-# Checar certificados armazenados
+# Checar certificados armazenados no volume
 docker exec -it proxy-traefik ls -l /letsencrypt
 ```
 
 ---
 ## 🗺 Roadmap / Ideias Futuras
-- Middleware de autenticação central (Basic / ForwardAuth)
-- Integração com Grafana / Loki para observabilidade
-- Adicionar Healthcheck ao CoreDNS
-- Templates para serviços TCP (ex.: MongoDB via SNI)
-- Script de bootstrap para validação de dependências
-
----
-## ⚖️ Licença
-Defina uma licença (ex.: MIT) se for público.
+- [ ] Middleware de autenticação central (ex: Authelia, via `forwardAuth`).
+- [ ] Integração com Grafana / Loki para observabilidade avançada (usando as métricas do Traefik).
+- [ ] Adicionar mais templates para serviços TCP (ex.: PostgreSQL, Redis).
+- [ ] Criar perfis no `docker-compose.yml` para habilitar/desabilitar grupos de serviços (ex: `observability`, `database`).
 
 ---
 ## 🙌 Contribuição
@@ -232,9 +227,9 @@ PRs e sugestões são bem-vindos. Abra uma issue com ideias ou problemas.
 
 ---
 ## 📎 Notas
-- Ajuste todos os domínios para o seu ambiente antes de uso em produção.
-- O IP tailnet em `Corefile` deve ser atualizado se mudar.
+- O IP da Tailnet (`TAILNET_IPV4_HINT`) no `.env` é crucial para o CoreDNS funcionar corretamente.
+- Toda a configuração é agora gerenciada por templates. Edite os arquivos `.tmpl` em `config/`, não os arquivos na raiz.
 
 ---
 ## ✨ Resumo
-Este repositório fornece um ponto de partida sólido para expor serviços internos com segurança através de Traefik + Tailscale, resolvendo nomes e certificados automaticamente e mantendo a superfície mínima exposta à Internet.
+Este repositório fornece um ponto de partida sólido e automatizado para expor serviços internos com segurança através de Traefik + Tailscale. Ele resolve nomes e certificados automaticamente, mantendo a superfície de ataque mínima e simplificando a gestão com `make` e `gomplate`.
