@@ -16,11 +16,10 @@ entryPoints:
     address: ':443'
     http:
       tls:
-        certResolver: leresolver
+        certResolver: leresolverDuckdns
         domains:
-          - main: '*.drake-ayu.duckdns.org'
-          - main: 'drake-ayu.duckdns.org'
-          # - main: '*.drake-ayu.local'
+          - main: '*.{{ getenv "DOMAIN_DUCKDNS" }}'
+          - main: '{{ getenv "DOMAIN_DUCKDNS" }}'
     allowACMEByPass: true
     asDefault: true
 
@@ -33,7 +32,7 @@ entryPoints:
 
 providers:
   docker:
-    endpoint: 'tcp://docker-socket-proxy:2375'
+    endpoint: '{{ getenv "REMOTE_DOCKER_HOST" }}'
     exposedByDefault: false
     watch: true
 
@@ -43,23 +42,20 @@ providers:
 
 
 certificatesResolvers:
-  leresolver:
+  leresolverDuckdns:
     acme:
-      email: nklowns@gmail.com
+      email: {{ getenv "ACME_EMAIL" }}
       storage: /letsencrypt/acme.json
-      # caServer: 'https://acme-staging-v02.api.letsencrypt.org/directory'
-      # tlsChallenge: {}
+      # caServer: {{ getenv "ACME_CA_SERVER" | default "staging" }}
       dnsChallenge:
         provider: duckdns
         disablePropagationCheck: true
         resolvers:
           - '1.1.1.1:53'
           - '8.8.8.8:53'
-          # - '100.124.118.27:53'
 
   tailsolver:
     tailscale: {}
-
 
 accessLog:
   filePath: '/logs/access.log'
@@ -68,7 +64,5 @@ accessLog:
       names:
         User-Agent: keep
 
-
 log:
-  # filePath: '/logs/traefik.log'
-  level: 'DEBUG'
+  level: '{{ getenv "TRAEFIK_LOG_LEVEL" | default "INFO" }}'

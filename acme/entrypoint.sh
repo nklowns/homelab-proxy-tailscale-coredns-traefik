@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-DOMAIN=${DOMAIN:-"drake-ayu.duckdns.org"}
-EMAIL=${EMAIL:-"nklowns@gmail.com"}
+DOMAIN=${DOMAIN_DUCKDNS:-"drake-ayu.duckdns.org"}
+EMAIL=${ACME_EMAIL:-"your.email+acme@domain.com"}
 DuckDNS_Token=${DUCKDNS_TOKEN:-""}
 
 # Exporta a variável com o nome que o plugin espera

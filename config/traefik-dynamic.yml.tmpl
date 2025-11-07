@@ -1,0 +1,55 @@
+# Dynamic configuration
+
+http:
+  middlewares:
+    secure-defaults:
+      headers:
+        stsSeconds: 15552000
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        frameDeny: true
+        contentTypeNosniff: true
+        referrerPolicy: 'strict-origin-when-cross-origin'
+        customFrameOptionsValue: 'DENY'
+      compress: true
+
+  routers:
+    traefik-duckdns:
+      entryPoints:
+        - websecure
+      rule: 'Host(`traefik.{{ getenv "DOMAIN_DUCKDNS" }}`)'
+      service: 'api@internal'
+      tls:
+        certResolver: leresolverDuckdns
+      middlewares:
+        - secure-defaults
+
+    traefik-local:
+      entryPoints:
+        - websecure
+      rule: 'Host(`traefik.{{ getenv "DOMAIN_LOCAL" }}`)'
+      service: 'api@internal'
+      tls: {}
+      middlewares:
+        - secure-defaults
+
+    traefik-tsnet:
+      entryPoints:
+        - websecure
+      rule: 'Host(`{{ getenv "TAILNET_HOSTNAME" | default "proxy-traefik" }}.{{ getenv "DOMAIN_TSNET" }}`) || Host(`{{ getenv "TAILNET_IPV4_HINT" }}`)'
+      service: 'api@internal'
+      tls:
+        certResolver: tailsolver
+      middlewares:
+        - secure-defaults
+
+# Local development certificate injection
+# Static certificates; consider moving to env variables if needed.
+
+tls:
+  certificates:
+    - certFile: /certs/{{ getenv "DOMAIN_DUCKDNS" }}.crt
+      keyFile: /certs/{{ getenv "DOMAIN_DUCKDNS" }}.key
+      stores:
+        - default

@@ -8,7 +8,7 @@ The certificate resolver is configured as follows:
 
 ```yaml
 certificatesResolvers:
-    leresolver:
+    leresolverDuckdns:
         acme:
             storage: /letsencrypt/acme.json
 ```

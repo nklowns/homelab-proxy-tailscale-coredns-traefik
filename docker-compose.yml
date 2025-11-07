@@ -4,7 +4,7 @@ networks:
 
 services:
   proxy-tailscale:
-    image: tailscale/tailscale:latest
+    image: ${TAILSCALE_IMAGE:-tailscale/tailscale:latest}
     container_name: proxy-tailscale
     restart: always
     networks:
@@ -14,7 +14,7 @@ services:
       - net_admin
       - sys_module
     environment:
-      - TS_HOSTNAME=proxy-traefik
+      - TS_HOSTNAME=${TAILNET_HOSTNAME:-proxy-traefik}
       - TS_AUTHKEY=${TS_AUTHKEY}
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_SOCKET=/var/run/tailscale/tailscaled.sock
@@ -31,7 +31,7 @@ services:
       start_period: 60s
 
   proxy-coredns:
-    image: coredns/coredns:latest
+    image: ${COREDNS_IMAGE:-coredns/coredns:latest}
     container_name: proxy-coredns
     restart: always
     network_mode: service:proxy-tailscale
@@ -42,9 +42,15 @@ services:
     command: -conf /Corefile
     volumes:
       - ./Corefile:/Corefile:ro
+    healthcheck:
+      test: ["CMD", "sh", "-c", "dig @127.0.0.1 health.${DOMAIN_LOCAL:-drake-ayu.local} A +short | grep -q '.'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   proxy-traefik:
-    image: traefik:latest
+    image: ${TRAEFIK_IMAGE:-traefik:latest}
     container_name: proxy-traefik
     restart: always
     network_mode: service:proxy-tailscale
@@ -56,6 +62,7 @@ services:
 
     environment:
       - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
+      - TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL:-INFO}
     volumes:
       - ./certs:/certs:ro
       - ./letsencrypt:/letsencrypt:rw
@@ -64,9 +71,15 @@ services:
       - ./logs:/logs:rw
       - ./tailscale/data:/var/lib/tailscale:rw
       - ./tailscale:/var/run/tailscale:rw
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   whoami:
-    image: traefik/whoami
+    image: ${WHOAMI_IMAGE:-traefik/whoami:latest}
     container_name: whoami
     hostname: whoami
     restart: unless-stopped
@@ -77,11 +90,11 @@ services:
       - traefik.enable=true
       ### whoami
       - traefik.http.services.whoami.loadbalancer.server.port=80
-      - traefik.http.routers.whoami.rule=Host(`whoami.${MY_DOMAIN_DUCKDNS}`) || Host(`whoami.${MY_DOMAIN_LOCAL}`)
+      - traefik.http.routers.whoami.rule=Host(`whoami.${DOMAIN_DUCKDNS}`) || Host(`whoami.${DOMAIN_LOCAL}`)
       - traefik.http.routers.whoami.entrypoints=websecure
 
   docker-socket-proxy:
-    image: tecnativa/docker-socket-proxy
+    image: ${DOCKER_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:latest}
     container_name: docker-socket-proxy
     hostname: docker-socket-proxy
     restart: always
@@ -89,23 +102,24 @@ services:
       - proxy_net
 
     environment:
-      ### Not always needed
+      ### Minimal permissions for Traefik provider (security by default)
+      - CONTAINERS=1
+      - NETWORKS=1
+      - SERVICES=1
+      - TASKS=1
+      ### Optional permissions for extended features
       - BUILD=1
       - COMMIT=1
       - CONFIGS=1
-      - CONTAINERS=1
       - DISTRIBUTION=1
       - EXEC=1
       - IMAGES=1
       - INFO=1
-      - NETWORKS=1
       - NODES=1
       - PLUGINS=1
-      - SERVICES=1
       - SESSION=1
       - SWARM=1
       - SYSTEM=1
-      - TASKS=1
       - VOLUMES=1
       - VERSION=1
       ### Security-critical
@@ -127,7 +141,7 @@ services:
       ### Docker (HTTP)
       - traefik.http.services.dockerapi.loadbalancer.server.port=2375
       - traefik.http.routers.dockerapi.entrypoints=websecure
-      - traefik.http.routers.dockerapi.rule=Host(`docker.${MY_DOMAIN_DUCKDNS}`) || Host(`docker.${MY_DOMAIN_LOCAL}`)
+      - traefik.http.routers.dockerapi.rule=Host(`docker.${DOMAIN_DUCKDNS}`) || Host(`docker.${DOMAIN_LOCAL}`)
 
   # acme-duckdns:
   #   build: ./acme
@@ -135,7 +149,7 @@ services:
   #   restart: unless-stopped
   #   environment:
   #     - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
-  #     - DOMAIN=${MY_DOMAIN_DUCKDNS}
-  #     - EMAIL=${EMAIL}
+  #     - DOMAIN=${DOMAIN_DUCKDNS}
+  #     - EMAIL=${ACME_EMAIL}
   #   volumes:
   #     - ./certs:/certs

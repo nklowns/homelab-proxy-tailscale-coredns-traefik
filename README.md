@@ -77,9 +77,10 @@ Baseado em `.env.example`:
 |----------|--------|
 | `TZ`                 | Timezone para containers. |
 | `DUCKDNS_TOKEN`      | Token para validação DNS-01 (ACME DuckDNS). |
-| `EMAIL`              | Email para registro ACME. |
-| `MY_DOMAIN_DUCKDNS`  | Domínio base DuckDNS (`drake-ayu.duckdns.org`). |
-| `MY_DOMAIN_LOCAL`    | Domínio local interno (`drake-ayu.local`). |
+| `ACME_EMAIL`         | Email para registro ACME. |
+| `DOMAIN_DUCKDNS`     | Domínio base DuckDNS (`drake-ayu.duckdns.org`). |
+| `DOMAIN_LOCAL`       | Domínio local interno (`drake-ayu.local`). |
+| `DOMAIN_TSNET`       | Domínio Tailscale MagicDNS (`drake-ayu.ts.net`). |
 | `TS_AUTHKEY`         | Chave de autenticação Tailscale (opcional se login manual). |
 | `REMOTE_DOCKER_HOST` | Usado internamente pelo Traefik (socket proxy). |
 | `BASIC_AUTH`         | (Reservado) Para proteger serviços com Auth básica. |
@@ -110,14 +111,14 @@ Coloque um `.env` (não versionado) ao lado do compose.
    docker logs proxy-tailscale --tail=50
    ```
 6. Teste o serviço exemplo:
-   - `https://whoami.<MY_DOMAIN_DUCKDNS>`
-   - `https://whoami.<MY_DOMAIN_LOCAL>` (se DNS local resolver)
+   - `https://whoami.<DOMAIN_DUCKDNS>`
+   - `https://whoami.<DOMAIN_LOCAL>` (se DNS local resolver)
 
 ---
 ## 🌐 Traefik
 ### EntryPoints
 - `web` (80) redireciona para `websecure` (HTTPS)
-- `websecure` (443) usa `certResolver=leresolver`
+- `websecure` (443) usa `certResolver=leresolverDuckdns`
 - `docker-tcp` (2375) expõe Docker API via TCP (controlado por labels) — protegido pela tailnet
 - `mongodb-tcp` (27017) placeholder para serviços TCP futuros
 
@@ -126,7 +127,7 @@ Coloque um `.env` (não versionado) ao lado do compose.
 - File: `traefik-dynamic.yml` para routers extras e certificados locais
 
 ### Certificados
-- `leresolver`: ACME DNS-01 DuckDNS (Let's Encrypt / ZeroSSL dependendo do servidor)
+- `leresolverDuckdns`: ACME DNS-01 DuckDNS (Let's Encrypt / ZeroSSL dependendo do servidor)
 - `tailsolver`: integração Tailscale (certificados emitidos pela API Tailscale)
 - Cert local manual em `tls.certificates` (útil para domínio `.local`)
 
@@ -179,7 +180,7 @@ No novo container (mesma rede `proxy_net`):
 labels:
   - traefik.enable=true
   - traefik.http.services.meuapp.loadbalancer.server.port=8080
-  - traefik.http.routers.meuapp.rule=Host(`meuapp.${MY_DOMAIN_DUCKDNS}`) || Host(`meuapp.${MY_DOMAIN_LOCAL}`)
+  - traefik.http.routers.meuapp.rule=Host(`meuapp.${DOMAIN_DUCKDNS}`) || Host(`meuapp.${DOMAIN_LOCAL}`)
   - traefik.http.routers.meuapp.entrypoints=websecure
 ```
 Se precisar de middleware (auth básica, headers, rate limit), adicione em `traefik-dynamic.yml` ou via labels.
