@@ -2,7 +2,7 @@
 
 http:
   middlewares:
-    secure-defaults:
+    secure-headers:
       headers:
         stsSeconds: 15552000
         forceSTSHeader: true
@@ -12,6 +12,7 @@ http:
         contentTypeNosniff: true
         referrerPolicy: 'strict-origin-when-cross-origin'
         customFrameOptionsValue: 'DENY'
+    compress-response:
       compress: true
 
   routers:
@@ -23,7 +24,8 @@ http:
       tls:
         certResolver: leresolverDuckdns
       middlewares:
-        - secure-defaults
+        - secure-headers
+        - compress-response
 
     traefik-local:
       entryPoints:
@@ -32,7 +34,8 @@ http:
       service: 'api@internal'
       tls: {}
       middlewares:
-        - secure-defaults
+        - secure-headers
+        - compress-response
 
     traefik-tsnet:
       entryPoints:
@@ -42,7 +45,8 @@ http:
       tls:
         certResolver: tailsolver
       middlewares:
-        - secure-defaults
+        - secure-headers
+        - compress-response
 
 # Local development certificate injection
 # Static certificates; consider moving to env variables if needed.

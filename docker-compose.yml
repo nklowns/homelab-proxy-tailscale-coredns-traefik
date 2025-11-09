@@ -7,6 +7,7 @@ services:
     image: ${TAILSCALE_IMAGE:-tailscale/tailscale:latest}
     container_name: proxy-tailscale
     restart: always
+    pull_policy: always
     networks:
       - proxy_net
 
@@ -34,6 +35,7 @@ services:
     image: ${COREDNS_IMAGE:-coredns/coredns:latest}
     container_name: proxy-coredns
     restart: always
+    pull_policy: always
     network_mode: service:proxy-tailscale
     depends_on:
       proxy-tailscale:
@@ -53,6 +55,7 @@ services:
     image: ${TRAEFIK_IMAGE:-traefik:latest}
     container_name: proxy-traefik
     restart: always
+    pull_policy: always
     network_mode: service:proxy-tailscale
     depends_on:
       proxy-tailscale:
@@ -83,6 +86,7 @@ services:
     container_name: whoami
     hostname: whoami
     restart: unless-stopped
+    pull_policy: always
     networks:
       - proxy_net
 
@@ -98,6 +102,7 @@ services:
     container_name: docker-socket-proxy
     hostname: docker-socket-proxy
     restart: always
+    pull_policy: always
     networks:
       - proxy_net
 
@@ -143,13 +148,13 @@ services:
       - traefik.http.routers.dockerapi.entrypoints=websecure
       - traefik.http.routers.dockerapi.rule=Host(`docker.${DOMAIN_DUCKDNS}`) || Host(`docker.${DOMAIN_LOCAL}`)
 
-  # acme-duckdns:
-  #   build: ./acme
-  #   container_name: acme-duckdns
-  #   restart: unless-stopped
-  #   environment:
-  #     - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
-  #     - DOMAIN=${DOMAIN_DUCKDNS}
-  #     - EMAIL=${ACME_EMAIL}
-  #   volumes:
-  #     - ./certs:/certs
+  acme-duckdns:
+    build: ./acme
+    container_name: acme-duckdns
+    restart: unless-stopped
+    environment:
+      - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
+      - DOMAIN_DUCKDNS=${DOMAIN_DUCKDNS}
+      - ACME_EMAIL=${ACME_EMAIL}
+    volumes:
+      - ./certs:/certs
