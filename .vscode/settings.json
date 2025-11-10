@@ -1,11 +1,10 @@
 {
     "yaml.schemas": {
-        "file:///root/.vscode-server/extensions/atlassian.atlascode-3.8.0/resources/schemas/pipelines-schema.json": "bitbucket-pipelines.yml",
         "https://json.schemastore.org/traefik-v3.json": [
-            "file:///home/cloud/dev/homelab/traefik/traefik.yml",
+            "traefik.yml"
         ],
         "https://json.schemastore.org/traefik-v3-file-provider.json": [
-            "file:///home/cloud/dev/homelab/traefik/traefik-dynamic.yml"
+            "traefik-dynamic.yml"
         ]
     }
 }

@@ -127,7 +127,10 @@ services:
       - SYSTEM=1
       - VOLUMES=1
       - VERSION=1
-      ### Security-critical
+      ### Security-critical (required for Traefik Docker provider)
+      # Note: POST=1 allows write operations to Docker API
+      # Required for Traefik to create/update resources
+      # Consider disabling if only read operations are needed
       - AUTH=1
       - SECRETS=1
       - POST=1

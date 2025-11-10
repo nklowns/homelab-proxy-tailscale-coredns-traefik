@@ -80,7 +80,7 @@ Baseado em `.env.example`. Crie um arquivo `.env` com suas configurações.
 | `TZ`                             | Timezone para containers. |
 | `TRAEFIK_IMAGE`...`WHOAMI_IMAGE` | Versões das imagens Docker a serem usadas. |
 | `TRAEFIK_LOG_LEVEL`              | Nível de log do Traefik (e.g., `INFO`, `DEBUG`). |
-| `TRAEFIK_METRICS_ENABLED`        | Ativa ou desativa o endpoint de métricas do Prometheus. |
+| `TRAEFIK_METRICS_ENABLED`        | *(Não implementado)* Reservado para ativar/desativar o endpoint de métricas do Prometheus. |
 | `DUCKDNS_TOKEN`                  | Token para validação DNS-01 (ACME DuckDNS). |
 | `ACME_EMAIL`                     | Email para registro e notificações da ACME (Let's Encrypt/ZeroSSL). |
 | `ACME_CA_SERVER`                 | Servidor ACME a ser usado. Use `staging` para testes e `production` para produção. |
@@ -193,8 +193,17 @@ Se precisar de middleware (auth básica, headers, rate limit), adicione em `trae
 
 ---
 ## 🛠 Troubleshooting
+
 | Sintoma | Ação |
 |---------|------|
+| Containers não sobem | Verifique se executou `make bootstrap` e configurou o `.env` |
+| Erro "proxy_net network not found" | Execute `make network` ou `docker network create proxy_net` |
+| Erro de permissões no `acme.json` | Execute `make file-perms` para corrigir |
+| Traefik não emite certificados | Verifique se `DUCKDNS_TOKEN` está correto no `.env` |
+| CoreDNS não resolve domínios | Verifique se `TAILNET_IPV4_HINT` está correto (IP da máquina na tailnet) |
+| Tailscale não conecta | Execute `docker exec -it proxy-tailscale tailscale up` se não usar `TS_AUTHKEY` |
+| Erro ao renderizar configs | Verifique se todas as variáveis obrigatórias estão no `.env` (use `make validate-vars`) |
+| Dashboard do Traefik não acessível | Verifique se o domínio está resolvendo corretamente e se os certificados foram emitidos |
 
 ---
 ## 🔐 Segurança (Checklist)
