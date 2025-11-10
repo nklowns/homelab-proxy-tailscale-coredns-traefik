@@ -193,8 +193,17 @@ Se precisar de middleware (auth básica, headers, rate limit), adicione em `trae
 
 ---
 ## 🛠 Troubleshooting
+
 | Sintoma | Ação |
 |---------|------|
+| Containers não sobem | Verifique se executou `make bootstrap` e configurou o `.env` |
+| Erro "proxy_net network not found" | Execute `make network` ou `docker network create proxy_net` |
+| Erro de permissões no `acme.json` | Execute `make file-perms` para corrigir |
+| Traefik não emite certificados | Verifique se `DUCKDNS_TOKEN` está correto no `.env` |
+| CoreDNS não resolve domínios | Verifique se `TAILNET_IPV4_HINT` está correto (IP da máquina na tailnet) |
+| Tailscale não conecta | Execute `docker exec -it proxy-tailscale tailscale up` se não usar `TS_AUTHKEY` |
+| Erro ao renderizar configs | Verifique se todas as variáveis obrigatórias estão no `.env` (use `make validate-vars`) |
+| Dashboard do Traefik não acessível | Verifique se o domínio está resolvendo corretamente e se os certificados foram emitidos |
 
 ---
 ## 🔐 Segurança (Checklist)

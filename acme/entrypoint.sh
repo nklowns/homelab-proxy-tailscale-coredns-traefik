@@ -16,7 +16,7 @@ fi
 echo "[INFO] Registrando conta no ZeroSSL com email: $ACME_EMAIL"
 /root/.acme.sh/acme.sh --register-account -m "$ACME_EMAIL" --server zerossl
 
-if [[ ! -f /certs/$DOMAIN_DUCKDNS.key ]]; then
+if [[ ! -f "/certs/${DOMAIN_DUCKDNS}.key" ]]; then
   echo "[INFO] Primeira emissão"
   echo "[INFO] Emitindo certificado para: $DOMAIN_DUCKDNS"
   /root/.acme.sh/acme.sh --issue \
@@ -27,8 +27,8 @@ if [[ ! -f /certs/$DOMAIN_DUCKDNS.key ]]; then
 
   echo "[INFO] Instalando certificados em /certs"
   /root/.acme.sh/acme.sh --install-cert -d "$DOMAIN_DUCKDNS" \
-    --key-file /certs/$DOMAIN_DUCKDNS.key \
-    --fullchain-file /certs/$DOMAIN_DUCKDNS.crt \
+    --key-file "/certs/${DOMAIN_DUCKDNS}.key" \
+    --fullchain-file "/certs/${DOMAIN_DUCKDNS}.crt" \
     --reloadcmd "echo [INFO] Certificado renovado para $DOMAIN_DUCKDNS"
 else
   echo "[INFO] Certificado já existe, iniciando modo daemon"

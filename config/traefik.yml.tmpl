@@ -46,7 +46,7 @@ certificatesResolvers:
     acme:
       email: {{ getenv "ACME_EMAIL" }}
       storage: /letsencrypt/acme.json
-      # caServer: {{ getenv "ACME_CA_SERVER" | default "staging" }}
+      caServer: {{ if eq (getenv "ACME_CA_SERVER") "staging" }}https://acme-staging-v02.api.letsencrypt.org/directory{{ else }}https://acme-v02.api.letsencrypt.org/directory{{ end }}
       dnsChallenge:
         provider: duckdns
         disablePropagationCheck: true
