@@ -13,7 +13,8 @@ logs/
 *.log
 
 # Certificates and sensitive data
-certs/
+certs/*
+!certs/.gitkeep
 !certs/README.md
 tailscale/
 !letsencrypt/README.md
