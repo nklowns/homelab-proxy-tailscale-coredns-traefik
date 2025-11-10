@@ -3,19 +3,31 @@
 .env.*
 !.env.example
 
-# static configurations
+# static configurations (rendered)
 Corefile
 traefik-dynamic.yml
 traefik.yml
+config/rendered/*
+!config/rendered/.gitkeep
 
-# Logs
+# Data directory - persistence layer
+data/*
+!data/.gitkeep
+!data/letsencrypt/.gitkeep
+!data/logs/.gitkeep
+!data/tailscale/.gitkeep
+!data/tailscale/
+data/tailscale/*
+!data/tailscale/data/
+data/tailscale/data/*
+!data/tailscale/data/.gitkeep
+!data/certs/.gitkeep
+
+# Legacy directories (deprecated - use data/ instead)
 logs/
 *.log
-
-# Certificates and sensitive data
 certs/
 tailscale/
-!letsencrypt/README.md
 letsencrypt/
 
 # HAProxy state

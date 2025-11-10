@@ -1,4 +1,4 @@
-.PHONY: bootstrap env-check network file-perms up down restart render-config validate-vars pull-gomplate
+.PHONY: bootstrap env-check network file-perms data-dirs acme-perms logs-perms up down restart render-config validate-vars pull-gomplate
 
 bootstrap: env-check network file-perms ## Bootstrap the environment (run once)
 	@echo "Bootstrap complete!"
@@ -21,21 +21,26 @@ network: ## Create proxy_net network if it doesn't exist
 	@echo "Creating proxy_net network..."
 	@docker network create proxy_net 2>/dev/null || echo "✓ Network proxy_net exists"
 
-file-perms: acme-perms logs-perms ## Set correct file permissions
+file-perms: acme-perms logs-perms data-dirs ## Set correct file permissions
 
-acme-perms: ## Set correct permissions on letsencrypt/acme.json
-	@echo "Setting permissions on letsencrypt/acme.json..."
-	@mkdir -p letsencrypt
-	@touch letsencrypt/acme.json
-	@chmod 600 letsencrypt/acme.json
-	@echo "✓ letsencrypt/acme.json exists"
+data-dirs: ## Create data directory structure
+	@echo "Creating data directory structure..."
+	@mkdir -p data/{letsencrypt,logs,tailscale/data,certs}
+	@echo "✓ Data directories created"
 
-logs-perms: ## Set correct permissions on logs/access.log
-	@echo "Setting permissions on logs/access.log..."
-	@mkdir -p logs
-	@touch logs/access.log
-	@chmod 600 logs/access.log
-	@echo "✓ logs/access.log exists"
+acme-perms: ## Set correct permissions on data/letsencrypt/acme.json
+	@echo "Setting permissions on data/letsencrypt/acme.json..."
+	@mkdir -p data/letsencrypt
+	@touch data/letsencrypt/acme.json
+	@chmod 600 data/letsencrypt/acme.json
+	@echo "✓ data/letsencrypt/acme.json exists"
+
+logs-perms: ## Set correct permissions on data/logs/access.log
+	@echo "Setting permissions on data/logs/access.log..."
+	@mkdir -p data/logs
+	@touch data/logs/access.log
+	@chmod 600 data/logs/access.log
+	@echo "✓ data/logs/access.log exists"
 
 ### Docker
 
@@ -76,25 +81,26 @@ validate-vars: ## Validar variáveis essenciais no .env
 
 render-config: env-check validate-vars pull-gomplate ## Render configs via gomplate container (usa --env-file .env)
 	@echo "Rendering configuration with gomplate (container, --env-file .env)..."
+	@mkdir -p config/rendered
 	@docker run --rm \
 		--env-file .env \
 		-v $$PWD:/work \
 		-w /work \
 		$(GOMPLATE_IMAGE) \
 		-f config/traefik.yml.tmpl \
-		-o traefik.yml
+		-o config/rendered/traefik.yml
 	@docker run --rm \
 		--env-file .env \
 		-v $$PWD:/work \
 		-w /work \
 		$(GOMPLATE_IMAGE) \
 		-f config/traefik-dynamic.yml.tmpl \
-		-o traefik-dynamic.yml
+		-o config/rendered/traefik-dynamic.yml
 	@docker run --rm \
 		--env-file .env \
 		-v $$PWD:/work \
 		-w /work \
 		$(GOMPLATE_IMAGE) \
 		-f config/Corefile.tmpl \
-		-o Corefile
-	@echo "✓ Rendered Corefile, traefik.yml and traefik-dynamic.yml"
+		-o config/rendered/Corefile
+	@echo "✓ Rendered config/rendered/Corefile, traefik.yml and traefik-dynamic.yml"

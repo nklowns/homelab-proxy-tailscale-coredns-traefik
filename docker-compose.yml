@@ -21,8 +21,8 @@ services:
       - TS_SOCKET=/var/run/tailscale/tailscaled.sock
       - TS_EXTRA_ARGS=
     volumes:
-      - ./tailscale/data:/var/lib/tailscale:rw
-      - ./tailscale:/var/run/tailscale
+      - ./data/tailscale/data:/var/lib/tailscale:rw
+      - ./data/tailscale:/var/run/tailscale
       - /dev/net/tun:/dev/net/tun
     healthcheck:
       test: ["CMD", "tailscale", "status"]
@@ -43,7 +43,7 @@ services:
 
     command: -conf /Corefile
     volumes:
-      - ./Corefile:/Corefile:ro
+      - ./config/rendered/Corefile:/Corefile:ro
     healthcheck:
       test: ["CMD", "sh", "-c", "dig @127.0.0.1 health.${DOMAIN_LOCAL:-drake-ayu.local} A +short | grep -q '.'"]
       interval: 30s
@@ -67,13 +67,13 @@ services:
       - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
       - TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL:-INFO}
     volumes:
-      - ./certs:/certs:ro
-      - ./letsencrypt:/letsencrypt:rw
-      - ./traefik.yml:/traefik.yml:ro
-      - ./traefik-dynamic.yml:/traefik-dynamic.yml:ro
-      - ./logs:/logs:rw
-      - ./tailscale/data:/var/lib/tailscale:rw
-      - ./tailscale:/var/run/tailscale:rw
+      - ./data/certs:/certs:ro
+      - ./data/letsencrypt:/letsencrypt:rw
+      - ./config/rendered/traefik.yml:/traefik.yml:ro
+      - ./config/rendered/traefik-dynamic.yml:/traefik-dynamic.yml:ro
+      - ./data/logs:/logs:rw
+      - ./data/tailscale/data:/var/lib/tailscale:rw
+      - ./data/tailscale:/var/run/tailscale:rw
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 30s
@@ -157,4 +157,4 @@ services:
       - DOMAIN_DUCKDNS=${DOMAIN_DUCKDNS}
       - ACME_EMAIL=${ACME_EMAIL}
     volumes:
-      - ./certs:/certs
+      - ./data/certs:/certs
