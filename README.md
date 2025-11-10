@@ -80,7 +80,7 @@ Baseado em `.env.example`. Crie um arquivo `.env` com suas configurações.
 | `TZ`                             | Timezone para containers. |
 | `TRAEFIK_IMAGE`...`WHOAMI_IMAGE` | Versões das imagens Docker a serem usadas. |
 | `TRAEFIK_LOG_LEVEL`              | Nível de log do Traefik (e.g., `INFO`, `DEBUG`). |
-| `TRAEFIK_METRICS_ENABLED`        | Ativa ou desativa o endpoint de métricas do Prometheus. |
+| `TRAEFIK_METRICS_ENABLED`        | *(Não implementado)* Reservado para ativar/desativar o endpoint de métricas do Prometheus. |
 | `DUCKDNS_TOKEN`                  | Token para validação DNS-01 (ACME DuckDNS). |
 | `ACME_EMAIL`                     | Email para registro e notificações da ACME (Let's Encrypt/ZeroSSL). |
 | `ACME_CA_SERVER`                 | Servidor ACME a ser usado. Use `staging` para testes e `production` para produção. |
