@@ -47,6 +47,9 @@
         match ".*"
         answer "{{ `{{ .Name }}` }} 60 IN SVCB 1 . alpn=h2,h3 port=443 ipv4hint={{ getenv `TAILNET_IPV4_HINT` }}"
     }
+
+    forward . 1.1.1.1 1.0.0.1
+    cache 30
 }
 
 {{ getenv "DOMAIN_LOCAL" }}:53 {

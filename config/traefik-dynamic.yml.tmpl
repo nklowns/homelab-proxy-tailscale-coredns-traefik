@@ -40,7 +40,7 @@ http:
     traefik-tsnet:
       entryPoints:
         - websecure
-      rule: 'Host(`{{ getenv "TAILNET_HOSTNAME" | default "proxy-traefik" }}.{{ getenv "DOMAIN_TSNET" }}`) || Host(`{{ getenv "TAILNET_IPV4_HINT" }}`)'
+      rule: 'Host(`{{ getenv "TAILNET_HOSTNAME" | default "proxy-traefik" }}.{{ getenv "DOMAIN_TSNET" }}`)'
       service: 'api@internal'
       tls:
         certResolver: tailsolver
